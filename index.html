@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>프리 폴, 마이 옵저버 — MYTHYFALL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Song+Myung&family=Noto+Serif+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-void:#0a0c12;
+    --ink:#e9e6dd;
+    --ink-dim:#9096a8;
+    --ink-faint:#5a6072;
+    --accent:#4fd1c5;
+    --accent-soft:rgba(79,209,197,0.16);
+    --ember:#e8734a;
+    --ember-soft:rgba(232,115,74,0.18);
+    --line:rgba(233,230,221,0.09);
+    --serif: 'Noto Serif KR', 'Nanum Myeongjo', serif;
+    --display: 'Song Myung', var(--serif);
+    --mono: 'IBM Plex Mono', 'Noto Sans Mono', monospace;
+    --ease: cubic-bezier(.22,.61,.36,1);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{margin:0; background:var(--bg-void); color:var(--ink); font-family:var(--serif); overflow:hidden; -webkit-font-smoothing:antialiased;}
+  button{font-family:inherit;}
+  h1,h2,h3,p{margin:0;}
+  [hidden]{display:none !important;}
+
+  #app{position:fixed; inset:0; display:flex; flex-direction:column; isolation:isolate;}
+
+  #bg-image{
+    position:fixed; inset:0; z-index:0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 15%, rgba(79,209,197,0.07), transparent 60%),
+      radial-gradient(ellipse 50% 35% at 85% 80%, rgba(232,115,74,0.05), transparent 60%),
+      linear-gradient(180deg, #0b0e15 0%, #0a0c12 55%, #08090e 100%);
+    background-size:cover; background-position:center; transition:background-image .6s var(--ease);
+  }
+  #bg-scrim{position:fixed; inset:0; z-index:1; background:linear-gradient(180deg, rgba(8,9,13,.74) 0%, rgba(8,9,13,.58) 40%, rgba(8,9,13,.85) 100%); pointer-events:none;}
+  #grain{position:fixed; inset:0; z-index:2; pointer-events:none; background:repeating-linear-gradient(180deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 3px); mix-blend-mode:overlay; opacity:.5; animation:flicker 7s ease-in-out infinite;}
+  @keyframes flicker{0%,100%{opacity:.4;} 48%{opacity:.4;} 50%{opacity:.6;} 52%{opacity:.4;} 76%{opacity:.5;}}
+  #vignette{position:fixed; inset:0; z-index:2; pointer-events:none; box-shadow:inset 0 0 18vw 2vw rgba(0,0,0,.65);}
+
+  .screen{position:relative; z-index:10; flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:6vh 6vw; text-align:center; overflow-y:auto;}
+
+  .eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.32em; color:var(--accent); text-transform:uppercase; opacity:.85;}
+  .title-logo{font-family:var(--display); font-size:clamp(1.9rem, 5.6vw, 3.2rem); line-height:1.25; margin:14px 0 4px; color:var(--ink); text-shadow:0 0 24px rgba(79,209,197,.18); animation:titleIn 1.2s var(--ease) both;}
+  @keyframes titleIn{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);}}
+  .title-sub{font-family:var(--mono); font-size:11.5px; letter-spacing:.14em; color:var(--ink-dim); margin-bottom:6px;}
+  .tagline{font-family:var(--display); font-size:15px; color:var(--ink-dim); margin:14px 0 22px;}
+
+  .quote-block{
+    max-width:480px; font-size:13.5px; line-height:2; color:var(--ink-dim);
+    font-style:italic; margin:0 0 26px; padding:18px 22px; border-left:2px solid var(--accent-soft);
+    text-align:left;
+  }
+
+  .meta-line{font-family:var(--mono); font-size:11px; letter-spacing:.08em; color:var(--ink-faint); margin-bottom:26px;}
+
+  .warn-box{
+    max-width:480px; width:100%; border:1px solid var(--ember-soft); border-radius:2px;
+    padding:16px 20px; margin-bottom:28px; text-align:left;
+  }
+  .warn-box h3{font-family:var(--mono); font-size:11px; letter-spacing:.12em; color:var(--ember); text-transform:uppercase; margin-bottom:10px;}
+  .warn-box ul{margin:0; padding-left:18px; color:var(--ink-dim); font-size:13px; line-height:1.9;}
+
+  .btn{font-family:var(--mono); font-size:13px; letter-spacing:.08em; color:var(--ink); background:transparent; border:1px solid var(--line); border-radius:2px; padding:14px 34px; cursor:pointer; transition:all .25s var(--ease);}
+  .btn:hover, .btn:focus-visible{border-color:var(--accent); color:var(--accent); background:var(--accent-soft);}
+  .btn:focus-visible{outline:2px solid var(--accent); outline-offset:3px;}
+  .btn-primary{border-color:rgba(79,209,197,.4); color:var(--accent);}
+  .btn-primary:hover{background:var(--accent-soft);}
+
+  details.lore{margin-top:8px; max-width:520px; width:100%; border-top:1px solid var(--line); padding-top:16px;}
+  details.lore summary{cursor:pointer; list-style:none; font-family:var(--mono); font-size:12px; letter-spacing:.08em; color:var(--ink-dim); display:flex; align-items:center; justify-content:center; gap:8px;}
+  details.lore summary::-webkit-details-marker{display:none;}
+  details.lore summary::before{content:'▸'; color:var(--accent); transition:transform .25s var(--ease);}
+  details.lore[open] summary::before{transform:rotate(90deg);}
+  .lore-body{text-align:left; font-size:13px; line-height:1.8; color:var(--ink-dim); margin-top:14px; display:grid; gap:9px;}
+  .lore-body b{color:var(--ink); font-weight:600;}
+
+  .footnote{font-family:var(--mono); font-size:10px; letter-spacing:.04em; color:var(--ink-faint); margin-top:30px; max-width:480px; line-height:1.7;}
+
+  /* ---------- Character select ---------- */
+  .char-grid{display:flex; gap:16px; flex-wrap:wrap; justify-content:center; max-width:720px; margin-top:8px;}
+  .char-card{
+    width:200px; text-align:left; background:rgba(255,255,255,.02); border:1px solid var(--line);
+    border-radius:3px; padding:20px 18px; cursor:pointer; transition:all .3s var(--ease);
+  }
+  .char-card:hover, .char-card:focus-visible{border-color:var(--accent); background:var(--accent-soft); transform:translateY(-3px);}
+  .char-card h3{font-family:var(--display); font-size:19px; color:var(--ink); margin-bottom:10px;}
+  .char-card p{font-size:12.5px; line-height:1.75; color:var(--ink-dim);}
+  .char-card .npc-note{font-family:var(--mono); font-size:10px; color:var(--ink-faint); margin-top:12px; letter-spacing:.03em;}
+
+  /* ---------- Act bar ---------- */
+  .act-bar{
+    position:relative; z-index:10; flex-shrink:0; width:100%;
+    display:flex; align-items:center; justify-content:center; gap:0;
+    padding:16px 4vw 12px; border-bottom:1px solid var(--line);
+  }
+  .act-stop{display:flex; flex-direction:column; align-items:center; gap:6px;}
+  .act-stop .dot{width:8px; height:8px; border-radius:50%; background:var(--ink-faint); border:1px solid var(--ink-faint); transition:all .4s var(--ease);}
+  .act-stop.passed .dot{background:var(--accent); border-color:var(--accent);}
+  .act-stop.current .dot{background:var(--accent); border-color:var(--accent); box-shadow:0 0 0 4px var(--accent-soft); animation:pulse 2.2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 4px var(--accent-soft);} 50%{box-shadow:0 0 0 7px transparent;}}
+  .act-stop .label{font-family:var(--mono); font-size:11px; letter-spacing:.08em; color:var(--ink-faint); transition:color .4s var(--ease);}
+  .act-stop.current .label{color:var(--accent); font-weight:600;}
+  .act-stop.passed .label{color:var(--ink-dim);}
+  .act-seg{width:44px; height:1px; background:var(--line); margin:0 8px; transition:background .4s var(--ease);}
+  .act-seg.filled{background:var(--accent);}
+  .char-tag{font-family:var(--mono); font-size:10px; letter-spacing:.06em; color:var(--ink-faint); text-align:center; padding:6px 0 0;}
+
+  /* ---------- Story screen ---------- */
+  #screen-story{padding:0; align-items:stretch; justify-content:flex-start; overflow:hidden;}
+  .story-scroll{flex:1; overflow-y:auto; padding:3vh 6vw 6vh; scroll-behavior:smooth;}
+  .story-text{
+    max-width:560px; margin:0 auto; font-size:clamp(15px, 2.2vw, 17px); line-height:2.05;
+    color:var(--ink); letter-spacing:.01em; text-align:left; animation:textIn .5s var(--ease) both;
+  }
+  @keyframes textIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  .ending-tag{
+    max-width:560px; margin:26px auto 0; font-family:var(--mono); font-size:11px;
+    letter-spacing:.2em; color:var(--ember); text-align:center;
+  }
+
+  .choice-list{display:flex; flex-direction:column; gap:10px; width:100%; max-width:560px; margin:28px auto 0;}
+  .choice-btn{
+    text-align:left; width:100%; background:rgba(255,255,255,.02); border:1px solid var(--line);
+    border-radius:2px; padding:14px 18px; color:var(--ink); font-family:var(--serif); font-size:14px;
+    cursor:pointer; transition:all .25s var(--ease); display:flex; justify-content:space-between; align-items:center; gap:10px;
+  }
+  .choice-btn:hover, .choice-btn:focus-visible{border-color:var(--accent); color:var(--accent); background:var(--accent-soft);}
+  .choice-btn .arrow{color:var(--accent); opacity:.7; flex-shrink:0;}
+
+  .continue-wrap{max-width:560px; margin:30px auto 0; display:flex; justify-content:center;}
+  .restart-wrap{max-width:560px; margin:20px auto 0; display:flex; justify-content:center;}
+
+  /* ---------- Settings ---------- */
+  #settings-toggle{position:fixed; top:18px; right:18px; z-index:70; width:42px; height:42px; border-radius:50%; background:rgba(18,21,31,.7); backdrop-filter:blur(6px); border:1px solid var(--line); color:var(--ink-dim); font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .25s var(--ease);}
+  #settings-toggle:hover, #settings-toggle:focus-visible{color:var(--accent); border-color:var(--accent);}
+  #settings-overlay{position:fixed; inset:0; z-index:55; background:rgba(6,7,10,.4);}
+  #settings-panel{position:fixed; top:0; right:0; bottom:0; z-index:60; width:min(360px, 88vw); background:rgba(15,18,27,.92); backdrop-filter:blur(14px); border-left:1px solid var(--line); padding:26px 24px; overflow-y:auto; transition:transform .35s var(--ease);}
+  #settings-panel[data-closed]{transform:translateX(105%);}
+  .settings-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:26px;}
+  .settings-head h2{font-family:var(--mono); font-size:13px; letter-spacing:.14em; color:var(--ink); text-transform:uppercase;}
+  #settings-close{background:none; border:none; color:var(--ink-faint); font-size:18px; cursor:pointer; line-height:1; padding:4px;}
+  #settings-close:hover{color:var(--accent);}
+  .setting-group{border-top:1px solid var(--line); padding:20px 0; text-align:left;}
+  .setting-group h3{font-family:var(--mono); font-size:11px; letter-spacing:.1em; color:var(--ink-dim); text-transform:uppercase; margin-bottom:12px;}
+  .file-row{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .file-label{display:inline-block; font-family:var(--mono); font-size:12px; color:var(--ink); border:1px solid var(--line); border-radius:2px; padding:9px 16px; cursor:pointer; transition:all .25s var(--ease);}
+  .file-label:hover{border-color:var(--accent); color:var(--accent);}
+  input[type="file"]{position:absolute; width:1px; height:1px; opacity:0; overflow:hidden;}
+  .mini-btn{background:none; border:1px solid var(--line); color:var(--ink-faint); font-family:var(--mono); font-size:11px; border-radius:2px; padding:8px 12px; cursor:pointer; transition:all .25s var(--ease);}
+  .mini-btn:hover{color:var(--accent); border-color:var(--accent);}
+  .mini-btn.danger:hover{color:var(--ember); border-color:var(--ember);}
+  .file-name{font-family:var(--mono); font-size:11px; color:var(--ink-faint); max-width:100%; word-break:break-all; margin-top:8px;}
+  .bgm-controls{display:flex; align-items:center; gap:12px; margin-top:14px;}
+  #bgm-toggle{width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background:none; color:var(--ink); cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  #bgm-toggle:hover{border-color:var(--accent); color:var(--accent);}
+  input[type="range"]{flex:1; accent-color:var(--accent); cursor:pointer;}
+  .hint{font-family:var(--serif); font-size:12px; color:var(--ink-faint); line-height:1.6; margin-top:10px;}
+
+  @media (max-width:520px){
+    .screen{padding:5vh 5vw;}
+    .story-scroll{padding:2.5vh 5vw 5vh;}
+    .char-card{width:100%; max-width:320px;}
+    .act-seg{width:22px; margin:0 4px;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important;}
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="bg-image"></div>
+  <div id="bg-scrim"></div>
+  <div id="grain"></div>
+  <div id="vignette"></div>
+
+  <button id="settings-toggle" aria-haspopup="true" aria-expanded="false" aria-label="설정 열기">⚙</button>
+  <div id="settings-overlay" hidden></div>
+
+  <aside id="settings-panel" data-closed aria-label="게임 설정" aria-hidden="true">
+    <div class="settings-head">
+      <h2>설정</h2>
+      <button id="settings-close" aria-label="설정 닫기">✕</button>
+    </div>
+    <div class="setting-group">
+      <h3>배경 이미지</h3>
+      <div class="file-row">
+        <label class="file-label" for="bg-input">이미지 선택</label>
+        <input type="file" id="bg-input" accept="image/*">
+        <button class="mini-btn" id="bg-reset">기본값으로</button>
+      </div>
+      <div class="file-name" id="bg-filename"></div>
+    </div>
+    <div class="setting-group">
+      <h3>배경 음악</h3>
+      <div class="file-row">
+        <label class="file-label" for="bgm-input">음원 선택</label>
+        <input type="file" id="bgm-input" accept="audio/*">
+        <button class="mini-btn" id="bgm-reset">끄기</button>
+      </div>
+      <div class="file-name" id="bgm-filename">선택된 음원 없음</div>
+      <div class="bgm-controls" id="bgm-controls" hidden>
+        <button id="bgm-toggle" aria-label="재생/일시정지">▶</button>
+        <input type="range" id="bgm-volume" min="0" max="1" step="0.01" value="0.6" aria-label="음량">
+      </div>
+      <p class="hint">직접 고른 이미지와 음원으로 이 열차 안을 채워보세요. 파일은 이 브라우저 안에서만 재생됩니다.</p>
+    </div>
+    <div class="setting-group">
+      <h3>게임</h3>
+      <button class="mini-btn danger" id="btn-reset-game">처음부터 다시 시작</button>
+      <p class="hint">지금까지의 선택을 모두 지우고 캐릭터 선택 화면으로 돌아갑니다.</p>
+    </div>
+  </aside>
+
+  <!-- ---------- Warning / intro screen ---------- -->
+  <section id="screen-warning" class="screen">
+    <div class="eyebrow">MYTHYFALL · THE EVERLASTING</div>
+    <h1 class="title-logo">프리 폴,<br>마이 옵저버</h1>
+    <p class="title-sub">『 Free Fall My Observer 』</p>
+    <p class="tagline">생존 전략, 시작해 보자.</p>
+
+    <blockquote class="quote-block">
+      분명 무엇에게도 매이지 않을 우리가 말한다.<br>
+      희생되거나 소모되거나 사라지거나 하지 않기를 바랐던 어떤 소원을.<br>
+      소원을 비는 것 정도는 허락될 수 있지 않나요?<br>
+      영원한 정거장 사이에서.
+    </blockquote>
+
+    <p class="meta-line">비주얼 텍스트 노벨 · 1인 · 5~15분 · 배경: 2026년, 범지구</p>
+
+    <div class="warn-box">
+      <h3>주의</h3>
+      <ul>
+        <li>등장인물의 사망</li>
+        <li>등장인물의 적극적 살인</li>
+        <li>등장인물의 적극적 살인 방조</li>
+        <li>뚜렷하지 않은 스토리 라인 및 엔딩</li>
+      </ul>
+    </div>
+
+    <button class="btn btn-primary" id="btn-to-charselect">이해했습니다, 계속하기</button>
+
+    <details class="lore">
+      <summary>세계관 살펴보기</summary>
+      <div class="lore-body">
+        <p><b>역사.</b> 약 500년 전, 거대 운석군의 충돌로 인류 문명은 멸절 직전까지 몰렸다. 혼돈의 7년을 지나, 예상보다는 덜한 파괴 속에서 인류는 살아남았다.</p>
+        <p><b>이능.</b> 대충돌 당시 발현범위 안에 있던 생존자 일부가 이능력을 얻었다. 훗날 이 힘의 정체가 '노스펙' 바이러스 감염에서 비롯되었다는 사실이 드러난다.</p>
+        <p><b>재앙.</b> 폐허 사이에서 기어나온 정체불명의 생명체, 노스펙. 노심(腦)을 중심으로 움직이며 인간을 감염시킨다.</p>
+        <p><b>도시.</b> '리더'의 방벽 아래 세워진 유일도시, 중앙도시. 재건세기(R.C.) 500년에 이른 지금, 전례 없는 호황기를 맞고 있다.</p>
+        <p><b>프론티어.</b> 재건세기 최초, 황무지 바깥을 개척한 1세대 이능력자들. 지금은 해산 상태.</p>
+        <p><b>프리저버.</b> 프론티어의 뒤를 이어 '내일의 영웅'이 되도록 인공적으로 창조된 2세대. 정작 도시 사람들은 이들이 인공적인 존재라는 사실을 모른다.</p>
+      </div>
+    </details>
+
+    <p class="footnote">영향을 받은 작품 — 「돌아가는 펭귄드럼」 「은하철도의 밤」 「부산행」 「MYTHYFALL 2: 반천년존속」</p>
+  </section>
+
+  <!-- ---------- Character select screen ---------- -->
+  <section id="screen-charselect" class="screen" hidden>
+    <div class="eyebrow">PLAYER NAME</div>
+    <h1 class="title-logo" style="font-size:clamp(1.6rem,4.4vw,2.4rem);">당신은 누구인가?</h1>
+    <p class="title-sub">선택에 따라 이야기가 조금씩 달라집니다</p>
+    <div class="char-grid" id="char-grid"></div>
+  </section>
+
+  <!-- ---------- Story screen ---------- -->
+  <section id="screen-story" class="screen" hidden>
+    <div class="act-bar" id="act-bar"></div>
+    <div class="char-tag" id="char-tag"></div>
+    <div class="story-scroll" id="story-scroll">
+      <p class="story-text" id="story-text"></p>
+      <div id="ending-block" hidden>
+        <p class="ending-tag" id="ending-tag"></p>
+        <div class="restart-wrap">
+          <button class="btn btn-primary" id="btn-restart">다시 플레이하기</button>
+        </div>
+      </div>
+      <div class="choice-list" id="choice-list"></div>
+      <div class="continue-wrap" id="continue-wrap" hidden>
+        <button class="btn btn-primary" id="btn-continue">계속 ›</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<audio id="bgm" loop></audio>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+
+  /* ---------- Korean particle helper ---------- */
+  function hasBatchim(word){
+    var ch = word.trim().slice(-1);
+    var code = ch.charCodeAt(0) - 0xAC00;
+    if(code < 0 || code > 11171) return false;
+    return code % 28 !== 0;
+  }
+  function josa(word, withB, withoutB){
+    return word + (hasBatchim(word) ? withB : withoutB);
+  }
+
+  /* ---------- Characters ---------- */
+  var CHARACTERS = {
+    rigel: {
+      name:"리겔",
+      flavor:"빛나는 별. 그러나 아크투루스에 의해 잠시 가려졌을 뿐이다.",
+      npc:"재뉴어리와 어거스트",
+      npcNote:"핵심 NPC · 재뉴어리, 어거스트"
+    },
+    galatine: {
+      name:"갈라티네",
+      flavor:"혀 위에서 녹아가는 우유 사탕, 혹은 어떤 태양의 기사의 작열하는 검.",
+      npc:"시리우스 미들턴",
+      npcNote:"핵심 NPC · 시리우스 미들턴"
+    },
+    camellia: {
+      name:"카멜리아",
+      flavor:"머리째로 절단되어 떨어지는 꽃송이처럼, 무언가가 끊어졌다.",
+      npc:"모건 가드너",
+      npcNote:"핵심 NPC · 모건 가드너"
+    }
+  };
+
+  var META_ENDING =
+    "<br><br>불꽃놀이 피육거리는 소리가 그친 밤 무렵, 강가에 물 철썩이는 소리가 남는다." +
+    "<br><br>우리는 시선을 거둔다. 눈을 깜빡인다. 롤20을 끈다. 주크박스를 나간다. 창을 닫는다." +
+    "<br><br>우리는 컴퓨터를 끈다." +
+    "<br><br>어두운 방 안, 스탠드가 켜진 상황에서, 모니터에 우리 얼굴이 비친다." +
+    "<br><br>옵저버(관찰자)는— 누구?" +
+    "<br><br>프리 폴, 마이 옵저버." +
+    "<br><br>관찰자로부터의 투신(탈피). 창을 닫음으로써 관측이 종료되고, 그래서 그 너머에서 어떻게 살아가는지는 관측되지 않지만—" +
+    "<br><br>따라서 영원히 자유로워질, 프리<i>Free</i>저버.";
+
+  /* ---------- Scene graph ---------- */
+  var SCENES = {
+
+    platform: { act:"기",
+      text:"중앙도시의 열차, 기차역은 이상할 정도로 도시의 한복판에 있다.<br><br>지하철도 아니고 지상열차가 도시 한복판에 있는데, 아무도 그 이상함을 느끼지 못한다.<br><br>멍하니 서 있다 보면, 플랫폼이다.<br><br>플랫폼에서 멍하니 서 있는 당신을 지나쳐 수많은 사람들이 승차하고 하차한다. 수많은 열차가 여기에서 출발하고, 여기로 도착한다.<br><br>어쩐지 당신은 이 열차에 타야 할 것만 같다고 생각하는데— 그때, 당신을 열차가 스쳐 지나간다.<br><br>이 열차는 신주쿠로 간다는 안내 방송이 나오고, 중앙도시를 가로지르는 이 열차는 다시는 돌아오지 않을 것처럼 보인다.<br><br>열차를 탈까?",
+      choices:[
+        {label:"탄다", next:"board_train"},
+        {label:"타지 않는다", next:"ending_left"}
+      ]
+    },
+
+    ending_left: { act:"기", ending:true, title:"떠난 자",
+      text:"열차에 타지 않기로 한다.<br><br>열차에 탄다는 것은, 그들이 만들어 놓은 모형정원에 동의한다는 것이다. 당신은 그러고 싶지 않았을지도 모른다.<br><br>가만히 이 플랫폼에 서서, 열차에 오르내리는 사람들을 바라본다. 그들은 그들 모두의 사정을 가지고 있을 텐데, 그 모든 것이 당신에게는 별 의미 없게 느껴졌을지도 모르겠다.<br><br>당신은…… 곧 천천히 이 플랫폼에서 등을 돌린다.<br><br>이 역 자체를 떠나면, 당신은 무엇이 될까? 무엇을 할 수 있을까?<br><br>아무것도 알 수 없는 채로, 당신은 이곳을 떠났다.<br><br>관측되지 않는 곳으로.<br><br>당신이 떠난 뒤에도 열차는 몇 번이고 이 플랫폼을 스쳐 지나갔을 것이다. 신주쿠로, 서울로, 어쩌면 이름조차 없는 역으로.<br><br>창 너머로 그 불빛을 바라보던 누군가가 있었다면— 그는 아마, 이 이야기가 여기서 끝났다고 기록했을 것이다.<br><br>프리 폴, 마이 옵저버.<br><br>당신은 관측되지 않기로 선택함으로써, 그 무엇도 되지 않은 채 자유로워졌다."
+    },
+
+    board_train: { act:"기",
+      text:"열차에 올라탄다. 열차 안은 의외로 한산하다, 사람도 별로 없다.<br><br>올라타서 주변을 둘러보는데, 아무도 당신에게 시선을 주지 않는다. 투명해진 것 같기도 하다.<br><br>아이 브로일러가 돌아가듯, 열차 차량이 서서히 출발한다. 문은 닫히지 않는다.<br><br>열린 문 사이로, 무언가가 보인다.<br><br>당신은 어떻게 하겠는가?",
+      choices:[
+        {label:"무언가를 향해 손을 뻗는다", next:"reach_out"},
+        {label:"고개를 돌려 다른 곳을 본다", next:"look_away"}
+      ]
+    },
+
+    reach_out: { act:"기", next:"converge1",
+      text:function(ctx){
+        var npc = CHARACTERS[ctx.character].npc;
+        return "고개를 돌리자, 그곳에는 당신의 몇십 년 전 시절이 보인다.<br><br>" +
+          "주황빛 머리카락, 새하얀 실험복을 입고, 새파란 태그가 달려 있는 당신…… 아직 무구한 당신이 당신을 본다.<br><br>" +
+          "아, 그는 아직 " + josa(npc,"을","를") + " 믿고 있었던가?<br><br>" +
+          "그와 함께, 깨질 듯한 두통이 일어난다.";
+      }
+    },
+
+    look_away: { act:"기", next:"converge1",
+      text:function(ctx){
+        var npc = CHARACTERS[ctx.character].npc;
+        return "과거 따위 아무래도 상관없다. 바꿀 수 있는 것은 없으며, 설령 미래라 한들 바꿀 수 있을지는 미지수다.<br><br>" +
+          "따라서 당신은 고개를 돌린다. 건너편 열차량으로 넘어가는 문을 지나가는 누군가가 보인다.<br><br>" +
+          "당신은 저 사람을 안다. " + npc + "다.<br><br>" +
+          npc + josa(npc,"은","는") + " 무언가 대화하면서 다음 열차량으로 넘어가고 있다.";
+      }
+    },
+
+    converge1: { act:"기",
+      text:function(ctx){
+        var npc = CHARACTERS[ctx.character].npc;
+        return "다음 열차량으로 넘어가길 선택한다.<br><br>" +
+          "어쩐지 두통을 안고, 다급하게 걸음을 옮겨 다음 열차량으로 넘어가는 문을 밀어 연다.<br><br>" +
+          "그러면 다음 열차에는 승객들이 모두 쓰러져 있다— 당신은 그들의 얼굴을 안다.<br><br>" +
+          "클로버를 비롯한 다른 실험체들이다. 그들은 모두 눈도 감지 못하고 경련을 일으키고 있다.<br><br>" +
+          "그러거나 말거나 " + npc + josa(npc,"은","는") + " 기장실을 향해 걸어나간다. 당신 앞에서 다음 열차량으로 향하는 문은 닫힌다.<br><br>" +
+          "당신은 어떻게 하겠는가?";
+      },
+      choices:[
+        {label:"다음 열차량으로 넘어간다", next:"follow_npc"},
+        {label:"이곳 사람들을 둘러본다", next:"look_around_car"}
+      ]
+    },
+
+    follow_npc: { act:"기", next:"act2_intro",
+      text:function(ctx){
+        var npc = CHARACTERS[ctx.character].npc;
+        return "걸음을 빨리 해서 쫓아가면— " + npc + josa(npc,"은","는") + " 쓰러진 자들은 눈에도 두지 않고 곧장 기장실로 간다는 것을 알 수 있다.<br><br>" +
+          "그때 당신의 눈에, 문 위에 붙은 전광판이 들어온다.<br><br>" +
+          "'이 열차는 신주쿠, 신주쿠 행입니다. 다음 정거장은 서울입니다.'<br><br>" +
+          "익숙할 수도, 처음 듣는 지명일 수도 있다. 그러나 중요한 것은 이 열차가 어디로 향하는지가 아니라, " + npc + josa(npc,"이","가") + " 어디로 향하는지이다.";
+      }
+    },
+
+    look_around_car: { act:"기", next:"act2_intro",
+      text:function(ctx){
+        var eyesLine = ctx.character === "rigel" ? "당신과도 같은 황금빛 눈이" : "'리겔'과도 같은 황금빛 눈이";
+        return "이곳 사람들을 둘러보려고 고개를 돌리자마자, 차창이 씨뻘게진다. 무언가가 폭발하듯이.<br><br>" +
+          "폭발하듯이 씨뻘게진 풍경을 뒤로하고, 새카만 머리카락의 누군가가 일어난다. 피부도 어둡고, 다만 밝은 것은 눈이다.<br><br>" +
+          eyesLine + " 어두운 터널 속에서 반짝인다.<br><br>" +
+          "그는 자신의 손목을 들어보이고 말한다.<br><br>" +
+          "'너는 알고 있었지?'<br><br>" +
+          "다시 눈을 감았다 뜨면, 그는 보이지 않는다. 이 열차량에 탄 건 당신 뿐이다.";
+      }
+    },
+
+    act2_intro: { act:"승",
+      text:"열차는 사람이 많지는 않지만, 그렇다고 평화로운 분위기도 아니다.<br><br>사람들이 종종 열차량을 오가며, 지나가는 차창에 비치는 풍경이 달라진다.<br><br>중앙도시는 아닌 것 같고…… 유리로 된 피라미드, 시계탑, 그리고 어느 동양식 고궁 같은 것이 보인다.<br><br>여기는 어딜까, 그런 생각을 할 때쯤— 차창 밖을 보는 것은 이걸로 충분하지 않나 싶기도 하다.<br><br>열차 안, 사람들은 잠들어 있다. 이상할 정도로 깊게 잠든 듯, 열차가 흔들려도 깨어날 기미가 없다.<br><br>누군가는 아예 좌석에 가로로 누워 잠들어 있는데…… 민폐 아닌가? 뭐, 어쨌든 뭐라 할 사람들도 모두 잠들어 있으니 괜찮을 것 같기도 하다.",
+      choices:[
+        {label:"잠든 아이를 살펴본다", next:"investigate_child"},
+        {label:"잠든 사람 A를 살펴본다", next:"investigate_a"},
+        {label:"잠든 사람 B를 살펴본다", next:"investigate_b"}
+      ]
+    },
+
+    investigate_child: { act:"승", next:"act2_timeskip",
+      text:"가까이 다가가 보면, 몸집이 작은 아이 하나가 웅크리고 잠들어 있다. 손에 무언가를 꼭 쥐고 있는데, 자세히 보니 낡은 승차권이다. 목적지 칸은 비어 있다.<br><br>깨울까 하다가, 그만둔다. 무엇을 깨우게 될지 알 수 없어서."
+    },
+    investigate_a: { act:"승", next:"act2_timeskip",
+      text:"연구원 완장을 찬 이가 좌석에 기대어 눈을 감고 있다. 숨은 쉬고 있지만, 그 숨이 이상하리만치 일정하다. 마치 녹음된 소리처럼.<br><br>주머니를 뒤져 볼까 싶다가도, 손이 쉽게 움직이지 않는다."
+    },
+    investigate_b: { act:"승", next:"act2_timeskip",
+      text:"창가 자리, 누군가 얼굴을 창에 기댄 채 잠들어 있다. 유리에 서린 입김이 규칙적으로 나타났다 사라진다.<br><br>그 얼굴이 낯익다는 느낌이 스치지만, 확신할 수 없다. 여기서는 다들 조금씩 낯익다."
+    },
+
+    act2_timeskip: { act:"승",
+      text:"타고 몇 정거장을 지나가면 이상할 정도로 졸리고, 모두가 잠들고 나면 다다음 정거장쯤에서 눈을 뜬다.<br><br>거기에 가자— 모두가 몇 센치는 더 커져 있고 (혹은 아닌 사람들도 있다), 옷도 바뀌어 있다. 어쩐지 좀 더 이성적이 된 것도 같다.<br><br>누군가 여기에서 내려야 한다고 말한다. 해야 하는 일이 있다고.<br><br>몇몇은 아니라고 한다. 연구원을 찾는 게 주 목적이 아니더라도, 이 종착역까지 가야 한다고. (그러나 종착역은 있을까?) 그 역에 내려서 역사 전화기로 담당자에게 연락을 넣어야 한다고 한다.<br><br>아니라고 하는 이들은— 내려서 자신들이 당장 이 역들의 질서를 잡아야 한다고 말한다.<br><br>당신은 어느 쪽에 서겠는가?",
+      choices:[
+        {label:"종착역까지 가야 한다고 말한다", next:"discover_sleepers"},
+        {label:"지금 당장 질서를 잡아야 한다고 말한다", next:"discover_sleepers"}
+      ]
+    },
+
+    discover_sleepers: { act:"전",
+      text:"그들이 대립한들, 협력한들, 열차는 달리고— 그중 누군가가 눈치챈다. 이 열차 이 량의 탑승객들이 연구원들이다.<br><br>연구원들은 잠에 들어 있고, 깨워도 깨어나지 않고, 아주 오랜 잠에 든 것처럼 평온해 보이고… (혹은 열차 바깥으로 던져버려도 깨지 않을 것만 같다.)<br><br>누군가 말한다. 이대로는 알 수 없다고. 확인해 봐야 하지 않겠냐고.<br><br>당신은 어떻게 하겠는가?",
+      choices:[
+        {label:"연구원 하나를 열차 밖으로 던져 본다", next:"throw_researcher"},
+        {label:"대신 당신이 열차 밖으로 몸을 던진다", next:"ending_fallen"},
+        {label:"아무도 건드리지 않는다", next:"leave_alone"}
+      ]
+    },
+
+    throw_researcher: { act:"전", next:"dream_broadcast",
+      text:"누군가 바깥으로 연구원을 던져 본다— 상관없다, 누구여도.<br><br>몸이 허공에 붕 뜨는가 싶더니, 순식간에 멀어진다. 떨어지는 동안에도 그는 눈을 뜨지 않는다.<br><br>그가 어떻게 됐는지는, 아무도 확인하지 못했다."
+    },
+
+    leave_alone: { act:"전", next:"dream_broadcast",
+      text:"아무도 손대지 않기로 한다. 잠든 이들을 잠든 채로 둔다.<br><br>그편이 나을지, 나쁠지는 아무도 모른다. 다만 열차는 계속 달린다."
+    },
+
+    ending_fallen: { act:"전", ending:true, title:"낙하자",
+      text:"당신은 잠시 창밖을 본다. 그리고— 대답 대신, 몸을 날린다. 열차 바깥으로.<br><br>바람이 순식간에 온몸을 훑고 지나간다. 열차는 멀어지고, 소리도 멀어지고, 마지막으로 빛이 멀어진다.<br><br>관측하기(Look)도 전에, 이야기는 이미 다른 곳으로 넘어가 있다.<br><br>당신은 어떻게 됐을까?<br><br>그건 아무도, 심지어 이 이야기를 지켜보던 이조차, 끝내 확인하지 못했다.<br><br>프리 폴, 마이 옵저버.<br><br>관측되지 않는 곳에서, 당신은 이야기의 바깥으로 완전히 떨어져 나갔다."
+    },
+
+    dream_broadcast: { act:"전",
+      text:"열차는 달리고, '이매-진!' 상상하라!<br><br>그게 차내방송으로 나옴과 동시에 다들 잠든다. 어느 날의 꿈을 꾼다. 연구소의 꿈인지 뭔지.<br><br>'생존 전략!' 분명 아무것도 되지 않을 너희들에게 고한다! 너희들이 살아남기 위해서는— 누군가를 죽여야만 한다!<br><br>그게 누구일까? 아무도 모르는 와중, 열차는 달리고, 창밖에는 바그다드, 서울, 신주쿠, 더 나아가 취리히, 바티칸, 파리의 풍경이 지나가고— 열차가 중간에 멈춘다.<br><br>멈춘 플랫폼에는 불이 나 있다.<br><br>그걸 보는 순간, 모두가 직감적으로 깨닫는다. '저건 존속 의지다.' 누구의? 그런 것은 중요하지 않다……<br><br>당신은 어떻게 하겠는가?",
+      choices:[
+        {label:"플랫폼의 불을 끈다", next:"platform_fire_out"},
+        {label:"불을 뒤로하고 열차를 다시 달리게 한다", next:"platform_fire_leave"}
+      ]
+    },
+
+    platform_fire_out: { act:"전", next:"kisaragi",
+      text:"손을 뻗어 불을 끈다. 뜨거움도, 그을음 냄새도 없다. 다만 조용해질 뿐이다."
+    },
+    platform_fire_leave: { act:"전", next:"kisaragi",
+      text:"뒤돌아보지 않고, 열차의 엔진을 다시 가동시킨다."
+    },
+
+    kisaragi: { act:"결",
+      text:"열차의 엔진을 다시 가동시켜, 열차를 달리게 하면— 이 열차는 어디로 가는가?<br><br>기장에게 물어보려고 해도, 기장실은 닫혀 있고, 잠겨 있고, 열리지도 않는다.<br><br>차내방송은 말한다. '다음 역은 키사라기, 키사라기 역입니다.' '내리실 문은 없습니다, 없습니다.'<br><br>없는 문을 억지로 찾아내다 보면, 벽인 줄 알았던 어느 벽의 균열이 눈에 들어온다.<br><br>문을 열면, 초속 8cm로 달리는 열차의 바깥 풍경이 보이고— 밤이고, 불꽃놀이가 올라가고, 터진다.<br><br>다들 아무 말도 하지 않고 그걸 바라본다. 마지막 불꽃놀이가 터질 때쯤, 열차가 멈춘다.<br><br>열차가 멈춘 곳은 어느 강의 다리 위. 플랫폼도 아니고, 역도 아니다.<br><br>내릴 곳은 강이다.<br><br>서로가 서로를 바라본다. 연구원들은 여전히 열차 뒷칸에서 잠들어 있다.<br><br>물결에는 여전히 불꽃놀이 불빛이 비추어지고, 선로로 가느냐 강으로 떨어지느냐— 선택인데.",
+      choices:[
+        {label:"선로로 내려간다", next:"ending_rail"},
+        {label:"강으로 뛰어든다", next:"ending_river"}
+      ]
+    },
+
+    ending_rail: { act:"결", ending:true, title:"선로 위에서",
+      text:"선로로 내려간다. 언제 다른 열차가 달려올지 모른다는 걸 알면서도.<br><br>발밑에서 자갈이 부서지는 소리가 난다. 걷는다. 어둠 속에서 걷다 보면, 저 앞에 또 다른 불빛이 있을지도 모른다고— 그런 생각을 하며 걷는다." + META_ENDING
+    },
+    ending_river: { act:"결", ending:true, title:"물결 속으로",
+      text:"강으로 뛰어든다. 이대로 익사할지도 모른다는 걸 알면서도.<br><br>물이 온몸을 감싼다. 차갑고, 그리고 이상하게 고요하다. 가라앉는 건지 떠오르는 건지도 알 수 없는 채로, 물결에 몸을 맡긴다." + META_ENDING
+    }
+  };
+
+  var ACTS = ["기","승","전","결"];
+
+  /* ---------- State ---------- */
+  var ctx = { character: null };
+  var currentId = null;
+
+  /* ---------- Elements ---------- */
+  var screenWarning = $("screen-warning");
+  var screenCharselect = $("screen-charselect");
+  var screenStory = $("screen-story");
+  var charGrid = $("char-grid");
+  var actBar = $("act-bar");
+  var charTag = $("char-tag");
+  var storyScroll = $("story-scroll");
+  var storyText = $("story-text");
+  var endingBlock = $("ending-block");
+  var endingTag = $("ending-tag");
+  var choiceList = $("choice-list");
+  var continueWrap = $("continue-wrap");
+  var btnContinue = $("btn-continue");
+  var btnRestart = $("btn-restart");
+
+  /* ---------- Character select ---------- */
+  function buildCharGrid(){
+    var html = "";
+    var order = ["rigel","galatine","camellia"];
+    for(var i=0;i<order.length;i++){
+      var key = order[i];
+      var c = CHARACTERS[key];
+      html += '<button class="char-card" data-char="' + key + '">' +
+        '<h3>' + c.name + '</h3>' +
+        '<p>' + c.flavor + '</p>' +
+        '<div class="npc-note">' + c.npcNote + '</div>' +
+        '</button>';
+    }
+    charGrid.innerHTML = html;
+    var cards = charGrid.querySelectorAll(".char-card");
+    for(var j=0;j<cards.length;j++){
+      cards[j].addEventListener("click", function(e){
+        ctx.character = e.currentTarget.getAttribute("data-char");
+        startStory();
+      });
+    }
+  }
+
+  $("btn-to-charselect").addEventListener("click", function(){
+    screenWarning.hidden = true;
+    screenCharselect.hidden = false;
+  });
+
+  function startStory(){
+    screenCharselect.hidden = true;
+    screenStory.hidden = false;
+    charTag.textContent = "당신은 " + CHARACTERS[ctx.character].name + "(으)로 플레이 중";
+    renderScene("platform");
+  }
+
+  /* ---------- Act bar ---------- */
+  function renderActBar(currentAct){
+    var idx = ACTS.indexOf(currentAct);
+    var html = "";
+    for(var i=0;i<ACTS.length;i++){
+      var cls = "act-stop";
+      if(i < idx) cls += " passed";
+      else if(i === idx) cls += " current";
+      html += '<div class="' + cls + '"><span class="dot"></span><span class="label">' + ACTS[i] + '</span></div>';
+      if(i < ACTS.length - 1){
+        html += '<span class="act-seg' + (i < idx ? " filled" : "") + '"></span>';
+      }
+    }
+    actBar.innerHTML = html;
+  }
+
+  /* ---------- Scene rendering ---------- */
+  function renderScene(id){
+    currentId = id;
+    var node = SCENES[id];
+    renderActBar(node.act);
+
+    var text = typeof node.text === "function" ? node.text(ctx) : node.text;
+    storyText.innerHTML = text;
+    storyText.classList.remove("story-text");
+    void storyText.offsetWidth;
+    storyText.classList.add("story-text");
+
+    if(node.ending){
+      endingBlock.hidden = false;
+      endingTag.textContent = "— 결말: " + node.title + " —";
+      choiceList.innerHTML = "";
+      continueWrap.hidden = true;
+    } else if(node.choices){
+      endingBlock.hidden = true;
+      continueWrap.hidden = true;
+      var html = "";
+      for(var i=0;i<node.choices.length;i++){
+        html += '<button class="choice-btn" data-next="' + node.choices[i].next + '">' +
+          '<span>' + node.choices[i].label + '</span><span class="arrow">›</span></button>';
+      }
+      choiceList.innerHTML = html;
+      var btns = choiceList.querySelectorAll(".choice-btn");
+      for(var j=0;j<btns.length;j++){
+        btns[j].addEventListener("click", function(e){
+          renderScene(e.currentTarget.getAttribute("data-next"));
+        });
+      }
+    } else {
+      endingBlock.hidden = true;
+      choiceList.innerHTML = "";
+      continueWrap.hidden = false;
+    }
+    storyScroll.scrollTop = 0;
+  }
+
+  btnContinue.addEventListener("click", function(){
+    var node = SCENES[currentId];
+    if(node && node.next) renderScene(node.next);
+  });
+
+  function resetGame(){
+    ctx.character = null;
+    currentId = null;
+    screenStory.hidden = true;
+    screenCharselect.hidden = false;
+    closeSettings();
+  }
+  btnRestart.addEventListener("click", resetGame);
+  $("btn-reset-game").addEventListener("click", function(){
+    if(window.confirm("정말 처음부터 다시 시작할까요?")) resetGame();
+  });
+
+  /* ---------- Settings panel ---------- */
+  var settingsToggle = $("settings-toggle");
+  var settingsPanel = $("settings-panel");
+  var settingsOverlay = $("settings-overlay");
+  var settingsClose = $("settings-close");
+
+  function openSettings(){
+    settingsPanel.removeAttribute("data-closed");
+    settingsPanel.setAttribute("aria-hidden", "false");
+    settingsOverlay.hidden = false;
+    settingsToggle.setAttribute("aria-expanded", "true");
+  }
+  function closeSettings(){
+    settingsPanel.setAttribute("data-closed", "");
+    settingsPanel.setAttribute("aria-hidden", "true");
+    settingsOverlay.hidden = true;
+    settingsToggle.setAttribute("aria-expanded", "false");
+  }
+  settingsToggle.addEventListener("click", function(){
+    if(settingsPanel.hasAttribute("data-closed")) openSettings(); else closeSettings();
+  });
+  settingsClose.addEventListener("click", closeSettings);
+  settingsOverlay.addEventListener("click", closeSettings);
+  settingsPanel.addEventListener("click", function(e){ e.stopPropagation(); });
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape" && !settingsPanel.hasAttribute("data-closed")) closeSettings();
+  });
+
+  /* ---------- Background image ---------- */
+  var bgImageEl = $("bg-image");
+  var bgInput = $("bg-input");
+  var bgFilename = $("bg-filename");
+  var bgReset = $("bg-reset");
+  var currentBgUrl = null;
+
+  bgInput.addEventListener("change", function(){
+    var file = bgInput.files && bgInput.files[0];
+    if(!file) return;
+    if(currentBgUrl) URL.revokeObjectURL(currentBgUrl);
+    currentBgUrl = URL.createObjectURL(file);
+    bgImageEl.style.backgroundImage = 'url("' + currentBgUrl + '")';
+    bgFilename.textContent = file.name;
+  });
+  bgReset.addEventListener("click", function(){
+    if(currentBgUrl) URL.revokeObjectURL(currentBgUrl);
+    currentBgUrl = null;
+    bgImageEl.style.backgroundImage = "none";
+    bgFilename.textContent = "";
+    bgInput.value = "";
+  });
+
+  /* ---------- BGM ---------- */
+  var bgmEl = $("bgm");
+  var bgmInput = $("bgm-input");
+  var bgmFilename = $("bgm-filename");
+  var bgmReset = $("bgm-reset");
+  var bgmControls = $("bgm-controls");
+  var bgmToggle = $("bgm-toggle");
+  var bgmVolume = $("bgm-volume");
+  var currentBgmUrl = null;
+
+  bgmEl.volume = parseFloat(bgmVolume.value);
+
+  bgmInput.addEventListener("change", function(){
+    var file = bgmInput.files && bgmInput.files[0];
+    if(!file) return;
+    if(currentBgmUrl) URL.revokeObjectURL(currentBgmUrl);
+    currentBgmUrl = URL.createObjectURL(file);
+    bgmEl.src = currentBgmUrl;
+    bgmFilename.textContent = file.name;
+    bgmControls.hidden = false;
+    bgmEl.play().then(function(){ bgmToggle.textContent = "❚❚"; }).catch(function(){ bgmToggle.textContent = "▶"; });
+  });
+  bgmReset.addEventListener("click", function(){
+    bgmEl.pause();
+    bgmEl.removeAttribute("src");
+    bgmEl.load();
+    if(currentBgmUrl) URL.revokeObjectURL(currentBgmUrl);
+    currentBgmUrl = null;
+    bgmFilename.textContent = "선택된 음원 없음";
+    bgmControls.hidden = true;
+    bgmToggle.textContent = "▶";
+    bgmInput.value = "";
+  });
+  bgmToggle.addEventListener("click", function(){
+    if(bgmEl.paused){ bgmEl.play(); bgmToggle.textContent = "❚❚"; }
+    else { bgmEl.pause(); bgmToggle.textContent = "▶"; }
+  });
+  bgmVolume.addEventListener("input", function(){
+    bgmEl.volume = parseFloat(bgmVolume.value);
+  });
+
+  /* ---------- Init ---------- */
+  buildCharGrid();
+
+})();
+</script>
+</body>
+</html>
